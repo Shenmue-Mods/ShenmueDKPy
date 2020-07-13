@@ -6,12 +6,19 @@ from files.file import File
 from utils.stream_helper import *
 from utils.model import *
 
-#import matplotlib
-#import matplotlib.pyplot as plt
+enable_plot = False         # enable plotting (destroys blender plugin)
+enable_dbg_print = False    # enable debug log printing
+walk_selection = True       # only parse walk animation
+ignore_linear = True        # ignore linear slope handle values (cleaner keyframes)
+
+if enable_plot:
+    import matplotlib
+    import matplotlib.pyplot as plt
 
 
 def dbg_print(*args, **kwargs):
-    print("".join(map(str, args)), **kwargs)
+    if enable_dbg_print:
+        print("".join(map(str, args)), **kwargs)
 
 
 class MOTN(File):
@@ -335,25 +342,33 @@ class MOTN(File):
                     if self.bone_index == (instruction >> 9):
                         bone_data = self.SequenceBoneData(self.bone_index)
 
+                        dbg_print(str(IKBoneID(self.bone_index)) + " @ " + str(self.float_data_offset))
+
                         if instruction & 0x1C0:
                             if instruction & 0x100:
                                 # PosX
+                                dbg_print("Pos X:")
                                 bone_data.pos_x = self.read_keyframes(binary_stream)
                             if instruction & 0x80:
                                 # PosY
+                                dbg_print("Pos Y:")
                                 bone_data.pos_y = self.read_keyframes(binary_stream)
                             if instruction & 0x40:
                                 # PosZ
+                                dbg_print("Pos Z:")
                                 bone_data.pos_z = self.read_keyframes(binary_stream)
                         if instruction & 0x38:
                             if instruction & 0x20:
                                 # RotX
+                                dbg_print("Rot X:")
                                 bone_data.rot_x = self.read_keyframes(binary_stream)
                             if instruction & 0x10:
                                 # RotY
+                                dbg_print("Rot Y:")
                                 bone_data.rot_y = self.read_keyframes(binary_stream)
                             if instruction & 0x08:
                                 # RotZ
+                                dbg_print("Rot Z:")
                                 bone_data.rot_z = self.read_keyframes(binary_stream)
                         if instruction & 0x07:  # seems to be unused in shenmue atm
                             if instruction & 0x04:
@@ -372,55 +387,56 @@ class MOTN(File):
                         self.bone_keyframes.append(bone_data)
 
                         # animation per bone plot
-                        #x = []
-                        #y = []
-                        #for keyframe in bone_data.pos_x:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #fig, ax = plt.subplots()
-                        #ax.plot(x, y, label='pos_x', marker='o')
-                        #ax.set(ylabel='value', xlabel='frame', title='motion data (' + str(IKBoneID(self.bone_index)) + ')')
-                        #ax.grid()
-                        #x.clear()
-                        #y.clear()
+                        if enable_plot:
+                            x = []
+                            y = []
+                            for keyframe in bone_data.pos_x:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            fig, ax = plt.subplots()
+                            ax.plot(x, y, label='pos_x', marker='o')
+                            ax.set(ylabel='value', xlabel='frame', title='motion data (' + str(IKBoneID(self.bone_index)) + ')')
+                            ax.grid()
+                            x.clear()
+                            y.clear()
 
-                        #for keyframe in bone_data.pos_y:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #ax.plot(x, y, label='pos_y', marker='o')
-                        #x.clear()
-                        #y.clear()
+                            for keyframe in bone_data.pos_y:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            ax.plot(x, y, label='pos_y', marker='o')
+                            x.clear()
+                            y.clear()
 
-                        #for keyframe in bone_data.pos_z:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #ax.plot(x, y, label='pos_z', marker='o')
-                        #x.clear()
-                        #y.clear()
+                            for keyframe in bone_data.pos_z:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            ax.plot(x, y, label='pos_z', marker='o')
+                            x.clear()
+                            y.clear()
 
-                        #for keyframe in bone_data.rot_x:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #ax.plot(x, y, label='rot_x', marker='o')
-                        #x.clear()
-                        #y.clear()
+                            for keyframe in bone_data.rot_x:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            ax.plot(x, y, label='rot_x', marker='o')
+                            x.clear()
+                            y.clear()
 
-                        #for keyframe in bone_data.rot_y:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #ax.plot(x, y, label='rot_y', marker='o')
-                        #x.clear()
-                        #y.clear()
+                            for keyframe in bone_data.rot_y:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            ax.plot(x, y, label='rot_y', marker='o')
+                            x.clear()
+                            y.clear()
 
-                        #for keyframe in bone_data.rot_z:
-                        #    x.append(keyframe.frame)
-                        #    y.append(keyframe.value)
-                        #ax.plot(x, y, label='rot_z', marker='o')
-                        #x.clear()
-                        #y.clear()
+                            for keyframe in bone_data.rot_z:
+                                x.append(keyframe.frame)
+                                y.append(keyframe.value)
+                            ax.plot(x, y, label='rot_z', marker='o')
+                            x.clear()
+                            y.clear()
 
-                        #plt.legend(loc="upper right")
-                        #plt.show()
+                            plt.legend(loc="upper right")
+                            plt.show()
 
                     self.bone_index += 1
 
@@ -508,13 +524,16 @@ class MOTN(File):
                                 keyframe.linear[0] = val
                                 val = sread_hfloat(binary_stream)
                                 keyframe.linear[1] = val
+                                dbg_print("Keyframe 1: ", keyframe.linear, " @ ", binary_stream.tell() - 4)
 
                             if keyframe_block_type & 0x40:
                                 val = sread_hfloat(binary_stream)
                                 last_keyframe_value = val
                                 keyframe.set_value(val)
+                                dbg_print("Keyframe 1: ", keyframe.value, " @ ", binary_stream.tell() - 2)
 
-                            keyframes.append(keyframe)
+                            if ignore_linear and keyframe.has_value or not ignore_linear:
+                                keyframes.append(keyframe)
 
                         # keyframe 2 of block
                         if keyframe_block_type & 0x30:
@@ -528,13 +547,16 @@ class MOTN(File):
                                 keyframe.linear[0] = val
                                 val = sread_hfloat(binary_stream)
                                 keyframe.linear[1] = val
+                                dbg_print("Keyframe 2: ", keyframe.linear, " @ ", binary_stream.tell() - 4)
 
                             if keyframe_block_type & 0x10:
                                 val = sread_hfloat(binary_stream)
                                 last_keyframe_value = val
                                 keyframe.set_value(val)
+                                dbg_print("Keyframe 2: ", keyframe.value, " @ ", binary_stream.tell() - 2)
 
-                            keyframes.append(keyframe)
+                            if ignore_linear and keyframe.has_value or not ignore_linear:
+                                keyframes.append(keyframe)
 
                         # keyframe 3 of block
                         if keyframe_block_type & 0x0C:
@@ -548,13 +570,16 @@ class MOTN(File):
                                 keyframe.linear[0] = val
                                 val = sread_hfloat(binary_stream)
                                 keyframe.linear[1] = val
+                                dbg_print("Keyframe 3: ", keyframe.linear, " @ ", binary_stream.tell() - 4)
 
                             if keyframe_block_type & 0x04:
                                 val = sread_hfloat(binary_stream)
                                 last_keyframe_value = val
                                 keyframe.set_value(val)
+                                dbg_print("Keyframe 3: ", keyframe.value, " @ ", binary_stream.tell() - 2)
 
-                            keyframes.append(keyframe)
+                            if ignore_linear and keyframe.has_value or not ignore_linear:
+                                keyframes.append(keyframe)
 
                         # keyframe 4 of block
                         if keyframe_block_type & 0x03:
@@ -568,13 +593,16 @@ class MOTN(File):
                                 keyframe.linear[0] = val
                                 val = sread_hfloat(binary_stream)
                                 keyframe.linear[1] = val
+                                dbg_print("Keyframe 4: ", keyframe.linear, " @ ", binary_stream.tell() - 4)
 
                             if keyframe_block_type & 0x01:
                                 val = sread_hfloat(binary_stream)
                                 last_keyframe_value = val
                                 keyframe.set_value(val)
+                                dbg_print("Keyframe 4: ", keyframe.value, " @ ", binary_stream.tell() - 2)
 
-                            keyframes.append(keyframe)
+                            if ignore_linear and keyframe.has_value or not ignore_linear:
+                                keyframes.append(keyframe)
 
                     new_block_5_offset = binary_stream.tell()
                     self.float_data_offset += 2 * keyframe_block_size
@@ -675,8 +703,9 @@ class MOTN(File):
 
             # debug selection
             # 956058 = Walk
-            if (data_offset != 956058):
-                continue
+            if walk_selection:
+                if (data_offset != 956058):
+                    continue
 
             #print(sequence.name)
             #print(data_offset)
